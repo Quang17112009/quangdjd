@@ -900,4 +900,4 @@ if __name__ == "__main__":
     polling_thread = threading.Thread(target=polling_with_retry)
     polling_thread.start()
 
-khi người dùng kích hoạt ket thành công thì /wfox trong bot sẽ check key ở đâu còn hạn hay hết hạn hợp lệ hay không hợp lệ
+
