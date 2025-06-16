@@ -8,7 +8,7 @@ import random
 import string 
 import threading 
 import requests
-API_TOKEN = '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c
+API_TOKEN = '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c'
 bot = telebot.TeleBot(API_TOKEN)
 ADMIN_ID = [6915752059] 
 from datetime import datetime, timedelta
