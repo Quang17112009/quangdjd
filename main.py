@@ -14,12 +14,12 @@ from telebot import types
 # Nếu chạy trên Render, nên dùng biến môi trường. Nếu chạy cục bộ, có thể đặt trực tiếp.
 # ĐẢM BẢO TOKEN ĐƯỢC BAO BỌC BỞI DẤU NHÁY ĐƠN HOẶC KÉP VÀ ĐÚNG TOÀN BỘ
 # THAY THẾ 'YOUR_BOT_API_TOKEN_HERE' BẰNG TOKEN THỰC CỦA BẠN
-API_TOKEN = os.getenv('API_TOKEN', 'YOUR_BOT_API_TOKEN_HERE')
+API_TOKEN = os.getenv('API_TOKEN', '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c')
 bot = telebot.TeleBot(API_TOKEN)
 
 # LẤY ADMIN ID TỪ BIẾN MÔI TRƯỜNG HOẶC ĐẶT TRỰC TIẾP
 # Nếu có nhiều admin, biến môi trường có thể là chuỗi 'id1,id2,id3'
-# THAY THẾ 'YOUR_ADMIN_TELEGRAM_ID' BẰNG ID ADMIN CỦA BẠN, HOẶC NHIỀU ID CÁCH NHAU BẰNG DẤU PHẨY
+# THAY THẾ '6915752059' BẰNG ID ADMIN CỦA BẠN, HOẶC NHIỀU ID CÁCH NHAU BẰNG DẤU PHẨY
 ADMIN_ID_STR = os.getenv('ADMIN_ID', 'YOUR_ADMIN_TELEGRAM_ID')
 ADMIN_ID = [int(x.strip()) for x in ADMIN_ID_STR.split(',') if x.strip()]
 print(f"DEBUG: Admin IDs configured: {ADMIN_ID}")
