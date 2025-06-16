@@ -20,7 +20,7 @@ bot = telebot.TeleBot(API_TOKEN)
 # LẤY ADMIN ID TỪ BIẾN MÔI TRƯỜNG HOẶC ĐẶT TRỰC TIẾP
 # Nếu có nhiều admin, biến môi trường có thể là chuỗi 'id1,id2,id3'
 # THAY THẾ '6915752059' BẰNG ID ADMIN CỦA BẠN, HOẶC NHIỀU ID CÁCH NHAU BẰNG DẤU PHẨY
-ADMIN_ID_STR = os.getenv('ADMIN_ID', 'YOUR_ADMIN_TELEGRAM_ID')
+ADMIN_ID_STR = os.getenv('ADMIN_ID', '6915752059')
 ADMIN_ID = [int(x.strip()) for x in ADMIN_ID_STR.split(',') if x.strip()]
 print(f"DEBUG: Admin IDs configured: {ADMIN_ID}")
 
