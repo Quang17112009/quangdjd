@@ -9,6 +9,8 @@ import string
 import threading
 import requests
 from datetime import datetime, timedelta
+# Import the keep_alive function
+from keep_alive import keep_alive # Thêm dòng này
 
 API_TOKEN = '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c'
 bot = telebot.TeleBot(API_TOKEN)
@@ -512,6 +514,26 @@ def handle_xocdia88(call):
         # So, 'Gãy' probably refers to some internal prediction state.
         # Without clear definition of 'Gãy' in the context of MD5 analysis, this rule is hard to apply.
         # I will skip the direct implementation of this rule as it requires external state or clarification.
+        # --- BẮT ĐẦU VẬN DỤNG LUẬT CỦA NGƯỜI DÙNG ---
+        # Lưu ý từ người dùng: Cứ 2 lần phân tích MD5 cho kết quả 'Gãy' thì sẽ có 1 lần cho kết quả khác.
+        # Để thực hiện được điều này, bot cần lưu trạng thái số lần "gãy" của mỗi người dùng hoặc cho từng loại phân tích.
+        # Vì trạng thái này không có trong `wfkey.txt` (là thông tin về key), và không có cơ chế lưu
+        # trạng thái "gãy" cho từng người dùng, nên việc triển khai chính xác là không thể với code hiện tại.
+        # Nếu "Gãy" có nghĩa là bot dự đoán sai và bạn có một cách để biết điều đó (ví dụ: người dùng báo cáo),
+        # bạn sẽ cần một hệ thống lưu trữ (ví dụ: một file JSON riêng, hoặc database) để theo dõi số lần "gãy" cho mỗi người dùng.
+        # Ví dụ một cách triển khai mang tính *ý tưởng* (cần cơ chế lưu trạng thái):
+        # user_gãy_counter = get_user_gãy_count(call.from_user.id) # Hàm này cần được bạn tự định nghĩa
+        # if user_gãy_counter % 3 == 2: # Nếu đây là lần "gãy" thứ 2 (đã có 2 lần "gãy" liên tiếp)
+        #     # Đảo ngược dự đoán
+        #     theo_cau = "X" if theo_cau == "T" else "T"
+        #     # Sau khi đảo ngược, reset hoặc cập nhật bộ đếm 'Gãy' tùy theo logic của bạn.
+        #     # set_user_gãy_count(call.from_user.id, 0)
+        # else:
+        #     # Tăng bộ đếm 'Gãy' nếu dự đoán này được coi là "Gãy"
+        #     # set_user_gãy_count(call.from_user.id, user_gãy_counter + 1)
+        # Vì không có cơ chế lưu trữ, tôi sẽ bỏ qua phần này trong mã code thực tế.
+        # --- KẾT THÚC VẬN DỤNG LUẬT CỦA NGƯỜI DÙNG ---
+
 
         phien = int(data[0]["SessionId"]) + 1
 
@@ -982,7 +1004,7 @@ def polling_with_retry():
             time.sleep(5)
 
 if __name__ == "__main__":
+    keep_alive() # Thêm dòng này để khởi chạy web server
     get_bot_info()
     polling_thread = threading.Thread(target=polling_with_retry)
     polling_thread.start()
-
