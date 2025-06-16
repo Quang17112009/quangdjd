@@ -13,15 +13,18 @@ import os # Import os để đọc biến môi trường
 # --- CẤU HÌNH BOT ---
 # LẤY API TOKEN TỪ BIẾN MÔI TRƯỜNG HOẶC ĐẶT TRỰC TIẾP
 # Nếu chạy trên Render, nên dùng biến môi trường. Nếu chạy cục bộ, có thể đặt trực tiếp.
-API_TOKEN = os.getenv('API_TOKEN', '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c') # ĐỔI TOKEN NÀY CỦA BẠN
+# ĐẢM BẢO TOKEN ĐƯỢC BAO BỌC BỞI DẤU NHÁY ĐƠN HOẶC KÉP VÀ ĐÚNG TOÀN BỘ
+API_TOKEN = os.getenv('API_TOKEN', '7983424898:AAGjKmtUBCL5H-ecT9F3_631xLJT_J7eS_c') # <<< THAY TOKEN THỰC CỦA BẠN VÀO ĐÂY >>>
 bot = telebot.TeleBot(API_TOKEN)
 
 # LẤY ADMIN ID TỪ BIẾN MÔI TRƯỜNG HOẶC ĐẶT TRỰC TIẾP
 # Nếu có nhiều admin, biến môi trường có thể là chuỗi 'id1,id2,id3'
-ADMIN_ID_STR = os.getenv('ADMIN_ID', '6915752059') # ĐỔI ID CỦA BẠN HOẶC NHIỀU ID CÁCH NHAU BẰNG DẤU PHẨY
+ADMIN_ID_STR = os.getenv('ADMIN_ID', '6915752059') # <<< THAY ID ADMIN CỦA BẠN VÀO ĐÂY, HOẶC NHIỀU ID CÁCH NHAU BẰNG DẤU PHẨY >>>
 ADMIN_ID = [int(x.strip()) for x in ADMIN_ID_STR.split(',') if x.strip()]
 
-# Cấu hình đường dẫn file (có thể thay đổi nếu dùng Render Volumes, ví dụ: /data/wfkey.txt)
+# Cấu hình đường dẫn file
+# Nếu dùng Render Volumes, bạn sẽ muốn thay đổi thành /data/wfkey.txt, /data/lsa.txt, v.v.
+# Ví dụ: WFKEY_FILE = "/data/wfkey.txt"
 WFKEY_FILE = "wfkey.txt"
 LSA_FILE = "lsa.txt"
 LSU_FILE = "lsu.txt"
@@ -72,7 +75,6 @@ def log_admin_action(action_description):
     with open(LSA_FILE, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} {action_description}\n")
 
-# Hàm này chưa có chỗ nào trong code ghi vào lsu.txt, bạn có thể thêm sau
 def log_user_action(action_description):
     now = datetime.datetime.now()
     timestamp = now.strftime("[%H:%M:%S %d/%m]")
@@ -143,7 +145,7 @@ def handle_wkey(message):
         
         # Kiểm tra HSD
         try:
-            hsd_date_obj = datetime.datetime.strptime(key_data["hsd"], "%m-%d-%Y").date()
+            hsd_date_obj = datetime.datetime.strptime(key_data["hsd"], "%m-%d-%YYYY").date() # Sửa định dạng HSD
             if hsd_date_obj < datetime.date.today():
                 key_data["uids"] = [] # Xóa UID nếu hết hạn
                 key_data["status"] = "Hết hạn" # Cập nhật trạng thái
@@ -175,7 +177,7 @@ def handle_wkey(message):
         
         # Kiểm tra HSD của key mới nhập
         try:
-            hsd_date_obj = datetime.datetime.strptime(key_data["hsd"], "%m-%d-%Y").date()
+            hsd_date_obj = datetime.datetime.strptime(key_data["hsd"], "%m-%d-%YYYY").date() # Sửa định dạng HSD
             if hsd_date_obj < datetime.date.today():
                 key_data["uids"] = [] # Xóa UID nếu hết hạn
                 key_data["status"] = "Hết hạn" # Cập nhật trạng thái
@@ -198,8 +200,7 @@ def handle_wkey(message):
             old_key_data = data[user_key]
             if uid in old_key_data["uids"]:
                 old_key_data["uids"].remove(uid)
-                # Tăng lại số lượng HWID của key cũ nếu cần
-                # old_key_data["hwid"] = str(int(old_key_data["hwid"]) + 1) # Có thể bỏ qua nếu HWID = 0
+            write_wfkey_data(data) # Lưu lại sau khi xóa UID khỏi key cũ
             bot.send_message(message.chat.id, f"Bạn đã đăng xuất khỏi key cũ: `{user_key}`", parse_mode="Markdown")
             
         # Thêm UID vào key mới
@@ -220,7 +221,7 @@ def handle_wkey(message):
             key_data["status"] = "Đã kích hoạt"
             # Cập nhật HSD nếu key vừa được kích hoạt lần đầu (từ trạng thái "Chưa kích hoạt")
             if key_data["hsd"] == "Chưa kích hoạt":
-                key_data["hsd"] = datetime.datetime.now().strftime("%m-%d-%Y") # HSD sẽ là ngày kích hoạt
+                key_data["hsd"] = datetime.datetime.now().strftime("%m-%d-%YYYY") # HSD sẽ là ngày kích hoạt # Sửa định dạng HSD
             write_wfkey_data(data)
             log_user_action(f"UID {uid} kích hoạt/đăng nhập key {key_input}")
 
@@ -259,13 +260,6 @@ def handle_logout(call):
     
     if key in data and uid in data[key]["uids"]:
         data[key]["uids"].remove(uid)
-        # Nếu hwid không phải là '0' (không giới hạn), thì tăng lại số lượng hwid
-        if data[key]["hwid"] != '0':
-            # Nếu HWID là giới hạn số lượng thiết bị, thì ta không giảm HWID trong file,
-            # mà chỉ loại bỏ UID. Giới hạn HWID là số thiết bị tối đa có thể dùng.
-            # Việc giảm HWID chỉ khi ta muốn giảm tổng số thiết bị được phép.
-            pass # Không cần tăng lại hwid nếu hwid là số lượng tối đa cho phép
-
         write_wfkey_data(data)
         bot.answer_callback_query(call.id, "Đăng xuất thành công!")
         try:
@@ -372,19 +366,19 @@ def wfox_dudoan(message):
     else:
         key_info = wfkey_data[user_key]
         
-        if key_info.get("lock_status") == "lock": # Sử dụng "lock_status" thay vì "status" cho việc ban
+        if key_info.get("lock_status") == "lock":
             bot.send_message(
                 message.chat.id,
                 "<b>Key của bạn đã bị ban!</b> Vui lòng liên hệ Admin để biết thêm chi tiết.",
                 parse_mode='HTML'
             )
-            return # Thoát ngay nếu bị ban
+            return
 
         try:
-            hsd_date = datetime.datetime.strptime(key_info["hsd"], "%m-%d-%Y").date()
-            if hsd_date < datetime.date.today(): # So sánh với ngày hiện tại (chỉ ngày, không giờ)
+            hsd_date = datetime.datetime.strptime(key_info["hsd"], "%m-%d-%YYYY").date() # Sửa định dạng HSD
+            if hsd_date < datetime.date.today():
                 key_info["uids"] = []
-                key_info["status"] = "Hết hạn" # Cập nhật trạng thái
+                key_info["status"] = "Hết hạn"
                 write_wfkey_data(wfkey_data)
                 bot.send_message(
                     message.chat.id,
@@ -416,8 +410,6 @@ def wfox_dudoan(message):
 @bot.callback_query_handler(func=lambda call: call.data == 'xocdia88')
 def handle_xocdia88(call):
     try:
-        # Sử dụng requests đã import
-        # Đảm bảo URL này còn hoạt động và trả về JSON đúng định dạng
         url = "https://taixiu.system32-cloudfare-356783752985678522.monster/api/luckydice/GetSoiCau?access_token="
 
         res = requests.get(url)
@@ -428,7 +420,7 @@ def handle_xocdia88(call):
         if not isinstance(data, list) or not data:
             raise Exception("Không có dữ liệu từ API hoặc định dạng không đúng.")
 
-        lst = data[:10] # Lấy 10 phần tử đầu tiên
+        lst = data[:10]
         chuoi = ""
         tong_all = 0
         so_5_6 = 0
@@ -447,20 +439,6 @@ def handle_xocdia88(call):
             chuoi += ket_qua
             list_ketqua.append(ket_qua)
 
-            # Logic này cần được sửa đổi nếu bạn muốn tính thắng/thua dựa trên dự đoán TRƯỚC đó.
-            # Hiện tại, nó đang so sánh với kết quả của chính phiên đó, không phải phiên trước.
-            # Để tính đúng, bạn cần lưu trữ dự đoán của phiên N-1 và so sánh với kết quả của phiên N.
-            # Hoặc đoạn code này chỉ đơn thuần là phân tích xu hướng, không phải đo độ chính xác của dự đoán.
-            # if du_doan_truoc: 
-            #     if ket_qua == du_doan_truoc:
-            #         thang += 1
-            #     else:
-            #         thua += 1
-            # du_doan_truoc = ket_qua 
-
-            dices = [i["FirstDice"], i["SecondDice"], i["ThirdDice"]]
-            so_5_6 += sum(1 for d in dices if d in [5, 6])
-
             if len(xu_huong) > 0:
                 xu_huong.append(dice_sum - xu_huong[-1])
                 reclycle_diff.append(abs(dice_sum - xu_huong[-1]))
@@ -476,12 +454,12 @@ def handle_xocdia88(call):
         tang = sum(1 for i in xu_huong[1:] if i > 0)
         giam = sum(1 for i in xu_huong[1:] if i < 0)
 
-        ti_le_5_6 = so_5_6 / 30 # Tổng số mặt xúc xắc là 10 phiên * 3 xúc xắc = 30 mặt
+        ti_le_5_6 = so_5_6 / 30
 
         dao_dong = sum(1 for i in reclycle_diff if i >= 2)
         reclycle_score = 1 if dao_dong <= 3 else 0
 
-        last_dice_sum = data[0]["DiceSum"] # Tổng điểm của phiên gần nhất
+        last_dice_sum = data[0]["DiceSum"]
         bliplack_score = 1 if last_dice_sum in [5, 7, 13, 11] or (str(last_dice_sum) and str(last_dice_sum)[0] == str(last_dice_sum)[-1]) else 0
 
         count_1 = sum(i["FirstDice"] == 1 or i["SecondDice"] == 1 or i["ThirdDice"] == 1 for i in lst)
@@ -495,29 +473,24 @@ def handle_xocdia88(call):
         score = 0
         if trung_binh > 10.5:
             score += 1
-        if tang > giam: # Xu hướng tăng nhiều hơn giảm
+        if tang > giam:
             score += 1
-        if ti_le_5_6 > 0.4: # Tỷ lệ 5-6 cao
+        if ti_le_5_6 > 0.4:
             score += 1
         score += reclycle_score + bliplack_score + dicerefund_score + becau_score
 
-        raw_score = int((score / 7) * 100) # Max score là 7
-        ti_le = max(60, min(raw_score, 90)) # Giới hạn tỷ lệ từ 60% đến 90%
+        raw_score = int((score / 7) * 100)
+        ti_le = max(60, min(raw_score, 90))
         
         ti_le_text = ""
-        if ti_le >= 80: # Tăng ngưỡng cho "Cược Lớn"
+        if ti_le >= 80:
             ti_le_text = f"{ti_le}% - Cược Lớn Auto Húp All-in Luôn"
-        elif ti_le >= 70: # Tăng ngưỡng cho "Cược Vừa"
+        elif ti_le >= 70:
             ti_le_text = f"{ti_le}% - Cược Vừa Để Mất Tránh Tiêc "
-        else: # Nếu dưới 70%
+        else:
             ti_le_text = f"{ti_le}% - Cược Nhẹ Làm Nhử "
 
-        theo_cau = du_doan # Dự đoán ban đầu dựa trên trung bình
-
-        # Các quy tắc dự đoán bổ sung (cần cân nhắc logic, có thể trùng lặp hoặc mâu thuẫn)
-        # if last_dice_sum in [15, 16, 17, 18]: # Chỉ dự đoán nếu last_dice_sum là tổng của tài lớn
-        #     if not xu_huong: # Điều kiện này luôn đúng nếu xu_huong có ít nhất 1 phần tử (dice_sum đầu tiên)
-        #         theo_cau = "T"
+        theo_cau = du_doan
 
         if xu_huong_seq:
             last_seq = xu_huong_seq[-1]
@@ -528,7 +501,7 @@ def handle_xocdia88(call):
             elif last_seq == (3, 2, 1):
                 theo_cau = "X"
 
-        if 11 <= last_dice_sum <= 13: # Nếu tổng điểm gần nhất nằm trong khoảng này, chuyển sang Xỉu
+        if 11 <= last_dice_sum <= 13:
             theo_cau = "X"
 
         phien = int(data[0]["SessionId"]) + 1
@@ -546,7 +519,7 @@ def handle_xocdia88(call):
 
 <b>[ T ] là Tài, [ X ] là Xỉu Nên Lưu Ý Chọn Đúng Cược Nhen</b>
 """
-        web_app_url = 'https://play.xocdia88.it.com' # Đảm bảo link này còn hoạt động
+        web_app_url = 'https://play.xocdia88.it.com'
 
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(text='XocDia 88', url=web_app_url))
@@ -562,11 +535,11 @@ def handle_xocdia88(call):
             )
         except telebot.apihelper.ApiTelegramException as e:
             if "message is not modified" not in str(e):
-                raise e # Chỉ raise nếu lỗi không phải do tin nhắn không thay đổi
+                raise e
 
     except Exception as e:
         import traceback
-        traceback.print_exc() # In traceback để dễ debug trên console/log
+        traceback.print_exc()
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
@@ -584,8 +557,8 @@ def handle_sumclub(call):
 @bot.message_handler(commands=['akey'], func=lambda message: message.from_user.id in ADMIN_ID)
 def handle_akey(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("Random Key", callback_data="akey_random"), # Đổi text cho rõ nghĩa
-               types.InlineKeyboardButton("Tạo Key Thường", callback_data="akey_normal")) # Đổi text cho rõ nghĩa
+    markup.add(types.InlineKeyboardButton("Random Key", callback_data="akey_random"),
+               types.InlineKeyboardButton("Tạo Key Tùy Chỉnh", callback_data="akey_normal")) # Đổi tên cho rõ ràng hơn
     bot.send_message(message.chat.id, "Chọn cách tạo key:", reply_markup=markup)
     
 @bot.message_handler(commands=['taokey'], func=lambda message: message.from_user.id in ADMIN_ID)
@@ -611,11 +584,10 @@ def _process_taokey_input(message):
         if not new_key:
             raise ValueError("Tên key không được để trống.")
         if not hwid_limit.strip():
-            hwid_limit = "0" # Nếu không nhập HWID, mặc định là 0 (không giới hạn)
+            hwid_limit = "0"
         
-        # Tính toán ngày hết hạn
         expiry_date = datetime.date.today() + datetime.timedelta(days=hsd_days)
-        hsd_calculated = expiry_date.strftime("%m-%d-%Y") # Định dạng MM-DD-YYYY
+        hsd_calculated = expiry_date.strftime("%m-%d-%YYYY") # Sửa định dạng HSD
 
         data = read_wfkey_data()
         if new_key in data:
@@ -624,12 +596,12 @@ def _process_taokey_input(message):
         
         data[new_key] = {
             "hsd": hsd_calculated, 
-            "hwid": hwid_limit, # Lưu dưới dạng string, sẽ được chuyển đổi thành int khi cần
+            "hwid": hwid_limit,
             "status": "Chưa kích hoạt",
             "lock_status": "unlock",
-            "uids": [] # Ban đầu chưa có UID nào liên kết
+            "uids": []
         }
-        write_wfkey_data(data) # Ghi dữ liệu đã cập nhật vào file
+        write_wfkey_data(data)
 
         response_text = (
             f"✅ Đã tạo key thành công!\n"
@@ -657,9 +629,7 @@ def handle_ekey(message):
             return
 
         key_info = data[key_to_edit]
-        # hwid_display = "Chưa có" if key_info['hwid'] == '0' or not key_info['hwid'] else key_info['hwid']
         
-        # Hiển thị số lượng HWID đã sử dụng / tổng HWID giới hạn
         used_hwid_count = len(key_info['uids'])
         max_hwid_limit = key_info['hwid']
         hwid_display = f"{used_hwid_count}/{max_hwid_limit}" if max_hwid_limit != '0' else "Không giới hạn"
@@ -667,7 +637,7 @@ def handle_ekey(message):
         response_text = (
             f"<blockquote>┌───────────\n"
             f"├─ Key : <tg-spoiler>{key_to_edit}</tg-spoiler>\n"
-            f"├─ HWID Devices: {hwid_display}\n" # Đã sửa
+            f"├─ HWID Devices: {hwid_display}\n"
             f"├─ Kích Hoạt : {key_info['status']}\n"
             f"├─ Ban : {key_info['lock_status']}\n"
             f"├─ HSD : {key_info['hsd']}\n"
@@ -683,7 +653,7 @@ def handle_ekey(message):
             types.InlineKeyboardButton(lock_btn_text, callback_data=f"ekey_toggle_ban_{key_to_edit}")
         )
         markup.add(
-            types.InlineKeyboardButton("Quản lý HWID", callback_data=f"ekey_hwid_list_{key_to_edit}"), # Đổi text
+            types.InlineKeyboardButton("Quản lý HWID", callback_data=f"ekey_hwid_list_{key_to_edit}"),
             types.InlineKeyboardButton("Del Key", callback_data=f"ekey_del_key_{key_to_edit}")
         )
 
@@ -699,31 +669,28 @@ def callback_query(call):
     key = parts[-1] if len(parts) > 2 else None
     data = read_wfkey_data()
 
-    if action_group == "ekey_edit_exp": # Sửa lỗi chính tả từ "ekey_edit" thành "ekey_edit_exp"
+    if action_group == "ekey_edit_exp":
         bot.send_message(call.message.chat.id, "Vui lòng Nhập Hạn Sử Dụng Muốn Trừ Hoặc Cộng (Ví Dụ: Nếu Trừ Thì `-1`, Còn Cộng Thì `1`). **Định dạng HSD sẽ là MM-DD-YYYY.**", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, lambda m: _ekey_edit_expire_input(m, key))
 
-    elif action_group == "ekey_toggle_ban": # Sửa lỗi chính tả từ "ekey_toggle" thành "ekey_toggle_ban"
+    elif action_group == "ekey_toggle_ban":
         if key in data:
             new_status = "unlock" if data[key]["lock_status"] == "lock" else "lock"
             data[key]["lock_status"] = new_status
-            write_wfkey_data(data)
             status_text_log = "UNBAN" if new_status == "unlock" else "BAN"
-            status_text_display = "UnBan" if new_status == "unlock" else "Ban" # Dùng cho hiển thị
+            status_text_display = "UnBan" if new_status == "unlock" else "Ban"
 
-            # Cập nhật lại trạng thái nếu bị Ban/UnBan
             if new_status == "lock":
                 data[key]["status"] = "Đã bị ban"
             elif new_status == "unlock" and data[key]["hsd"] != "Chưa kích hoạt":
-                data[key]["status"] = "Đã kích hoạt" # Hoặc trạng thái trước đó
+                data[key]["status"] = "Đã kích hoạt"
 
-            write_wfkey_data(data) # Lưu lại sau khi cập nhật status
-
+            write_wfkey_data(data)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, 
                                   text=f"Đã **{status_text_display}** Key `{key}`", parse_mode="Markdown")
             log_admin_action(f"[{status_text_log}] Admin {call.from_user.id} đã {status_text_display} Key {key}")
 
-    elif action_group == "ekey_hwid_list": # Sửa lỗi chính tả từ "ekey_hwid" thành "ekey_hwid_list"
+    elif action_group == "ekey_hwid_list":
         if key in data:
             uids = data[key]["uids"]
             hwid_list_text = f"**Danh Sách HWID Cho Key** `{key}`:\n\n"
@@ -738,13 +705,13 @@ def callback_query(call):
                 types.InlineKeyboardButton("Xóa User từ HWID", callback_data=f"ekey_del_user_{key}"),
                 types.InlineKeyboardButton("Thêm HWID", callback_data=f"ekey_add_hwid_{key}")
             )
-            markup.add(types.InlineKeyboardButton("Giảm giới hạn HWID", callback_data=f"ekey_dec_hwid_limit_{key}")) # Nút mới để giảm giới hạn HWID
-            markup.add(types.InlineKeyboardButton("Tăng giới hạn HWID", callback_data=f"ekey_inc_hwid_limit_{key}")) # Nút mới để tăng giới hạn HWID
+            markup.add(types.InlineKeyboardButton("Giảm giới hạn HWID", callback_data=f"ekey_dec_hwid_limit_{key}"))
+            markup.add(types.InlineKeyboardButton("Tăng giới hạn HWID", callback_data=f"ekey_inc_hwid_limit_{key}"))
             
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text=hwid_list_text, reply_markup=markup, parse_mode="HTML")
 
-    elif action_group == "ekey_del_key": # Sửa lỗi chính tả từ "ekey_del" thành "ekey_del_key"
+    elif action_group == "ekey_del_key":
         if key in data:
             del data[key]
             write_wfkey_data(data)
@@ -760,20 +727,19 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, "Vui Lòng Nhập **UID** Cần Thêm Vào Key (hoặc nhập '0' để đặt lại HWID về 0):", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, lambda m: _ekey_add_hwid_input(m, key))
 
-    elif action_group == "ekey_dec_hwid": # Xử lý giảm giới hạn HWID
+    elif action_group == "ekey_dec_hwid":
         bot.send_message(call.message.chat.id, "Vui lòng nhập **Số lượng HWID** muốn giảm (ví dụ: `-1` để giảm 1):", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, lambda m: _ekey_change_hwid_limit(m, key, 'decrease'))
 
-    elif action_group == "ekey_inc_hwid": # Xử lý tăng giới hạn HWID
+    elif action_group == "ekey_inc_hwid":
         bot.send_message(call.message.chat.id, "Vui lòng nhập **Số lượng HWID** muốn tăng (ví dụ: `1` để tăng 1):", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, lambda m: _ekey_change_hwid_limit(m, key, 'increase'))
-
 
     elif action_group == "akey_random":
         bot.send_message(call.message.chat.id, "Vui lòng nhập **Số Lượng Key** | **Số Ngày HSD** | **Số HWID (0 nếu không giới hạn)** (ví dụ: `5 | 30 | 1`)", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, _akey_random_input)
 
-    elif action_group == "akey_normal": # Tên gọi cũ, giờ đã có /taokey mới riêng
+    elif action_group == "akey_normal": # Tạo key tùy chỉnh (tương tự /taokey nhưng từ menu akey)
         bot.send_message(call.message.chat.id, "Vui lòng nhập **Tên Key** | **Số Ngày HSD** | **Số HWID (0 nếu không giới hạn)** (ví dụ: `MyKey123 | 60 | 2`)", parse_mode="Markdown")
         bot.register_next_step_handler(call.message, _akey_normal_input)
 
@@ -807,12 +773,6 @@ def handle_ls(message):
                types.InlineKeyboardButton("Lịch Sử User", callback_data="ls_user"))
     bot.send_message(message.chat.id, "Chọn lịch sử muốn xem:", reply_markup=markup)
 
-# Hàm này bị trùng lặp với hàm callback_query, nên tôi sẽ bỏ qua nó.
-# @bot.callback_query_handler(func=lambda call: call.from_user.id in ADMIN_ID)
-# def callback_query(call):
-#     # ... (code giống hệt hàm callback_query ở trên)
-#     pass # Đã được xử lý bởi hàm callback_query chính
-
 def _ekey_edit_expire_input(message, key):
     try:
         change_value = int(message.text.strip())
@@ -824,9 +784,9 @@ def _ekey_edit_expire_input(message, key):
                 return
             
             try:
-                current_date = datetime.datetime.strptime(current_hsd_str, "%m-%d-%Y").date() # Chỉ lấy ngày
+                current_date = datetime.datetime.strptime(current_hsd_str, "%m-%d-%YYYY").date() # Sửa định dạng HSD
                 new_date = current_date + datetime.timedelta(days=change_value)
-                data[key]["hsd"] = new_date.strftime("%m-%d-%Y")
+                data[key]["hsd"] = new_date.strftime("%m-%d-%YYYY") # Sửa định dạng HSD
                 write_wfkey_data(data)
                 bot.send_message(message.chat.id, f"Đã cập nhật **HSD** cho Key `{key}` thành `{data[key]['hsd']}`", parse_mode="Markdown")
                 log_admin_action(f"[EDIT EXP] Admin {message.from_user.id} đã thay đổi HSD Key {key} thêm {change_value} ngày. HSD mới: {data[key]['hsd']}")
@@ -843,7 +803,6 @@ def _ekey_del_user_input(message, key):
     if key in data:
         if uid_to_delete in data[key]["uids"]:
             data[key]["uids"].remove(uid_to_delete)
-            # Không cần tăng HWID ở đây vì HWID là số giới hạn thiết bị, không phải số thiết bị đã dùng
             write_wfkey_data(data)
             bot.send_message(message.chat.id, f"Đã xóa **UID** `{uid_to_delete}` khỏi Key `{key}`.", parse_mode="Markdown")
             log_admin_action(f"[DEL USER] Admin {message.from_user.id} đã xóa UID {uid_to_delete} khỏi Key {key}")
@@ -863,23 +822,19 @@ def _ekey_add_hwid_input(message, key):
     key_data = data[key]
 
     if uid_or_reset_hwid == '0':
-        # Đặt lại tất cả UID và HWID
         key_data["uids"] = []
-        key_data["status"] = "Chưa kích hoạt" # Trạng thái về chưa kích hoạt nếu reset
-        # Không thay đổi giới hạn HWID, chỉ reset số lượng đã dùng
+        key_data["status"] = "Chưa kích hoạt"
         write_wfkey_data(data)
         bot.send_message(message.chat.id, f"Đã đặt lại tất cả HWID và trạng thái cho Key `{key}` về 'Chưa kích hoạt'.", parse_mode="Markdown")
         log_admin_action(f"[RESET HWID] Admin {message.from_user.id} đã đặt lại HWID cho Key {key}")
         return
 
-    # Nếu là một UID để thêm
     new_uid = uid_or_reset_hwid
     if new_uid in key_data["uids"]:
         bot.send_message(message.chat.id, f"**UID** `{new_uid}` đã tồn tại trong Key `{key}`.", parse_mode="Markdown")
         return
 
-    # Kiểm tra giới hạn HWID trước khi thêm
-    if key_data["hwid"] != '0': # Nếu HWID có giới hạn
+    if key_data["hwid"] != '0':
         try:
             current_hwid_count = len(key_data["uids"])
             max_hwid_limit = int(key_data["hwid"])
@@ -894,7 +849,7 @@ def _ekey_add_hwid_input(message, key):
     key_data["status"] = "Đã kích hoạt"
 
     if key_data["hsd"] == "Chưa kích hoạt":
-        key_data["hsd"] = datetime.datetime.now().strftime("%m-%d-%Y") # HSD sẽ là ngày kích hoạt
+        key_data["hsd"] = datetime.datetime.now().strftime("%m-%d-%YYYY") # Sửa định dạng HSD
         bot.send_message(message.chat.id, f"Đã thêm **HWID** `{new_uid}` vào Key `{key}`. Key đã được kích hoạt và HSD được đặt là ngày hôm nay: `{key_data['hsd']}`.", parse_mode="Markdown")
     else:
         bot.send_message(message.chat.id, f"Đã thêm **HWID** `{new_uid}` vào Key `{key}`.", parse_mode="Markdown")
@@ -925,7 +880,7 @@ def _ekey_change_hwid_limit(message, key, change_type):
             return
 
         if new_hwid_limit < 0:
-            new_hwid_limit = 0 # Không cho phép giới hạn âm
+            new_hwid_limit = 0
 
         data[key]["hwid"] = str(new_hwid_limit)
         write_wfkey_data(data)
@@ -938,7 +893,6 @@ def _ekey_change_hwid_limit(message, key, change_type):
         bot.send_message(message.chat.id, f"Đã xảy ra lỗi không mong muốn: `{e}`", parse_mode="Markdown")
         log_admin_action(f"[ERROR] Lỗi khi thay đổi giới hạn HWID bởi admin {message.from_user.id}: {e}")
 
-# Hàm này là _akey_normal_input cũ, đã đổi tên thành _akey_normal_input
 def _akey_random_input(message):
     try:
         parts = [p.strip() for p in message.text.split('|')]
@@ -953,13 +907,13 @@ def _akey_random_input(message):
             hwid_limit = "0" 
         
         expiry_date = datetime.date.today() + datetime.timedelta(days=hsd_days)
-        hsd_calculated = expiry_date.strftime("%m-%d-%Y")
+        hsd_calculated = expiry_date.strftime("%m-%d-%YYYY") # Sửa định dạng HSD
         
         generated_keys_info = []
         file_lines = []
         for _ in range(num_keys):
             new_key = generate_random_key()
-            key_info = f"{new_key} | {hsd_calculated} | {hwid_limit} | Chưa kích hoạt | unlock" # Thêm trạng thái và lock_status
+            key_info = f"{new_key} | {hsd_calculated} | {hwid_limit} | Chưa kích hoạt | unlock"
             generated_keys_info.append(f"<tg-spoiler>{new_key}</tg-spoiler> | HSD: {hsd_calculated} | HWID Limit: {hwid_limit}")
             file_lines.append(key_info)
 
@@ -976,7 +930,7 @@ def _akey_random_input(message):
         bot.send_message(message.chat.id, f"Lỗi: {e}\nVui lòng nhập đúng định dạng: `Số Lượng | Số Ngày HSD | Số HWID` (ví dụ: `5 | 30 | 1`)", parse_mode="Markdown")
         
         
-def _akey_normal_input(message):
+def _akey_normal_input(message): # Hàm tạo key tùy chỉnh từ menu akey
     try:
         parts = [p.strip() for p in message.text.split('|')]
         if len(parts) != 3:
@@ -992,7 +946,7 @@ def _akey_normal_input(message):
             hwid_limit = "0" 
         
         expiry_date = datetime.date.today() + datetime.timedelta(days=hsd_days)
-        hsd_calculated = expiry_date.strftime("%m-%d-%Y")
+        hsd_calculated = expiry_date.strftime("%m-%d-%YYYY") # Sửa định dạng HSD
 
         data = read_wfkey_data()
         if new_key in data:
