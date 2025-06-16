@@ -70,8 +70,8 @@ def _(message):
 
     caption = (
         f'🤖 <b>Xin Chào Bạn <a href="tg://user?id={user_id}">{name}</a>!</b>\n\n'
-        '<blockquote>Tôi Là Dự ĐoánXocdia88! Tôi Là Trợ Lý Alpha Được Tạo Bởi Một Thế Lực Wicked Đằng Sau Nó '
-        'Và Tạo Bởi Các Người Đẹp Trai Nhất Thế Giới Giúp Bạn Kéo Về Nhà Sau 1 Tiếng Bế Bot. Chúng Tôi Hỗ Trợ Được Rất Nhiều Sàn. '
+        '<blockquote>Tôi Là Dự ĐoánXocdia88! Tôi Là Trợ Lý Alpha Được Tạo Bởi @hehetoolvip '
+        'Chúng Tôi Hỗ Trợ Được Rất Nhiều Sàn. '
         'Dự ĐoánXocdia88 Cập Nhật Liên Tục Nên Bạn Có Thể Yên Tâm, Giá Lại Rất Hạt Dẻ</blockquote>\n\n'
         '<b>🐔 Hãy Sử Dụng Lệnh /whelp Để Có Một Trải Nghiệm Tuyệt Vời</b>'
     )
